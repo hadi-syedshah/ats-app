@@ -209,3 +209,29 @@ After the earlier failed run, the same disposable end-to-end script was re-run w
 The failed CV `3bda5bd9-ce53-48c1-b363-935668562d2a` and the successful follow-up CV `840fb30b-a793-4bd3-ae03-903bf9a31cd2` were queried directly after their disposable-run cleanup. The database returned `[]`; neither record is currently stuck in `evaluating` or `failed`.
 
 After a new preview restart, the landing page again rendered the visible `Sign in` link targeting `/login`. Browser DOM inspection measured it as an anchor at `left: 1167.15625`, `top: 18`, `width: 65.34375`, `height: 34`; `document.elementFromPoint(1200, 35)` returned that same `A` element with text `Sign in`. I then tried the exact link by its browser element index and by the measured screen coordinates. In all attempts, the browser remained at `/`; no navigation event was reported. **The direct navigation test is a failure in the current managed browser/preview session.** The `/login` route has been shown to render when opened directly, but the landing-page Sign in interaction must not be reported as proven working.
+
+## 8. Controlled persisted failure-state reproduction
+
+To capture the status before disposal, I built the app and started a separate local production process on port 3001 with only that process configured with `NVIDIA_NIM_API_KEY=invalid`. The managed project configuration was not changed. The disposable script was directed to that process and produced the following exact output:
+
+```text
+{"phase":"upload CV","cv_id":"f804a900-6bb4-4712-9dbd-fff4b8c15caa","upload_status":"created"}
+{"phase":"wait for parsing","cv_id":"f804a900-6bb4-4712-9dbd-fff4b8c15caa","status":"parsed"}
+{"phase":"verify parsed data","cv_id":"f804a900-6bb4-4712-9dbd-fff4b8c15caa","parsed":{"name":"Casey Example (cid:20) Software Engineer","email":"casey.example@example.test","skill_count":7}}
+{
+  "phase": "request evaluation",
+  "cv_id": "f804a900-6bb4-4712-9dbd-fff4b8c15caa",
+  "status_after_failure": "failed",
+  "error": "Evaluation failed (502): {\"error\":\"NVIDIA NIM request failed (451): \"}",
+  "cleanup": "will run in finally"
+}
+file:///home/ubuntu/ats-app/scripts/live-e2e.mjs:123
+  if (!evaluateResponse.ok || typeof evaluateBody.evaluation?.score !== "number") throw new Error(`Evaluation failed (${evaluateResponse.status}): ${JSON.stringify(evaluateBody)}`);
+                                                                                        ^
+Error: Evaluation failed (502): {"error":"NVIDIA NIM request failed (451): "}
+    at file:///home/ubuntu/ats-app/scripts/live-e2e.mjs:123:89
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Node.js v22.13.0
+```
+
+The script read `cvs.status` immediately after receiving the 502 and before its `finally` cleanup; the observed persisted status was therefore **`failed`**, not `evaluating`. A subsequent direct SQL query returned `[]` for that CV ID, confirming the disposable cleanup removed the retained record after the status observation.
