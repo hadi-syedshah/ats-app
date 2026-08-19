@@ -32,3 +32,8 @@
 - [x] Diagnose and fix the landing-page Sign in link so direct pointer activation navigates to `/login` in the managed preview.
 - [x] Add bounded retry with backoff for transient NVIDIA NIM failures and remove the unsuitable `/v1/models` health check; real evaluation continues to use chat completions.
 - [x] Run the live E2E script twice consecutively with successful parse and evaluation results before marking the navigation and NIM fixes complete.
+- [x] Fix public Supabase environment resolution in `lib/env.ts` using static `NEXT_PUBLIC_*` accesses so browser signup/login can initialize correctly.
+- [x] Apply the supplied dark, dense ATS design system consistently to landing, auth, candidate, and admin interfaces without changing ATS functionality or backend logic, including the dense admin command desk and designed empty state.
+- [x] Verify signup/login initialization in the browser and re-run the live end-to-end pipeline after the visual-only interface pass.
+- [x] Investigate whether the incomplete ZIP export is controllable from the project workspace and document the finding.
+- [ ] Commit and push the verified environment and visual-design changes to GitHub.

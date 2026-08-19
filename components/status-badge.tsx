@@ -10,6 +10,5 @@ const labels: Record<CvStatus, string> = {
 };
 
 export function StatusBadge({ status }: { status: CvStatus }) {
-  const className = status === "evaluated" ? "chip-success" : status === "failed" ? "chip-fail" : status === "uploaded" || status === "parsing" || status === "evaluating" ? "chip-warn" : "";
-  return <span className={`chip ${className}`}>{labels[status]}</span>;
+  return <span className={`chip status-badge status-${status}`}><span className="status-pulse" aria-hidden />{labels[status]}</span>;
 }
