@@ -36,4 +36,5 @@
 - [x] Apply the supplied dark, dense ATS design system consistently to landing, auth, candidate, and admin interfaces without changing ATS functionality or backend logic, including the dense admin command desk and designed empty state.
 - [x] Verify signup/login initialization in the browser and re-run the live end-to-end pipeline after the visual-only interface pass.
 - [x] Investigate whether the incomplete ZIP export is controllable from the project workspace and document the finding.
-- [ ] Commit and push the verified environment and visual-design changes to GitHub.
+- [x] Commit and push the verified environment and visual-design changes to GitHub.
+- [ ] Push commit `b6c41d32584ccb0d3c03a5510f490f8e398b665e` to the connected GitHub repository and verify the remote main branch matches local HEAD.
