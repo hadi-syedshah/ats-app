@@ -21,6 +21,25 @@ export type EvaluationInput = {
   candidate: { name?: string | null; skills?: string[] | null; rawText?: string | null };
 };
 
+const NIM_MAX_ATTEMPTS = 3;
+const NIM_RETRY_DELAY_MS = 600;
+
+function retryDelayMs(attempt: number) {
+  return NIM_RETRY_DELAY_MS * 2 ** attempt;
+}
+
+function isRetryableNimStatus(status: number) {
+  return status === 408 || status === 429 || status === 451 || status >= 500;
+}
+
+function isAbortOrTransportError(error: unknown) {
+  return error instanceof DOMException || error instanceof TypeError;
+}
+
+function pause(durationMs: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+}
+
 function normalizeSkills(skills: string[]) {
   const normalized = new Map<string, string>();
   for (const value of skills.map((skill) => skill.trim()).filter(Boolean)) {
@@ -87,20 +106,33 @@ export async function evaluateWithNim(input: EvaluationInput): Promise<NimEvalua
     ]
   };
 
-  const response = await fetch(env.nvidiaNimApiUrl(), {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(45_000)
-  });
+  let failure: Error | undefined;
+  for (let attempt = 0; attempt < NIM_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(env.nvidiaNimApiUrl(), {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(45_000)
+      });
 
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 500);
-    throw new Error(`NVIDIA NIM request failed (${response.status}): ${detail || response.statusText}`);
+      if (response.ok) {
+        const completion = nimResponseSchema.parse(await response.json());
+        const content = responseText(completion.choices[0]?.message?.content);
+        if (!content) throw new Error("NVIDIA NIM returned an empty evaluation response.");
+        return extractEvaluation(content);
+      }
+
+      const detail = (await response.text()).slice(0, 500);
+      failure = new Error(`NVIDIA NIM request failed (${response.status}): ${detail || response.statusText}`);
+      if (!isRetryableNimStatus(response.status) || attempt === NIM_MAX_ATTEMPTS - 1) break;
+    } catch (error) {
+      failure = error instanceof Error ? error : new Error(String(error));
+      if (!isAbortOrTransportError(error) || attempt === NIM_MAX_ATTEMPTS - 1) break;
+    }
+
+    await pause(retryDelayMs(attempt));
   }
 
-  const completion = nimResponseSchema.parse(await response.json());
-  const content = responseText(completion.choices[0]?.message?.content);
-  if (!content) throw new Error("NVIDIA NIM returned an empty evaluation response.");
-  return extractEvaluation(content);
+  throw new Error(`${failure?.message ?? "NVIDIA NIM evaluation failed."} after ${NIM_MAX_ATTEMPTS} attempts.`);
 }

@@ -29,3 +29,6 @@
 - [x] Run a fresh evidence-based verification audit covering preview state, full test/build output, live pipeline proof, direct-verification gaps, and GitHub revision alignment.
 - [x] Capture and report the exact NIM failure response, persisted post-failure CV status, configuration reachability, and direct landing Sign in navigation result.
 - [x] Reproduce an upstream NIM evaluation failure with synthetic test data and query the failed CV status before cleanup; the observed persisted status was `failed`, then disposable cleanup removed the record.
+- [x] Diagnose and fix the landing-page Sign in link so direct pointer activation navigates to `/login` in the managed preview.
+- [x] Add bounded retry with backoff for transient NVIDIA NIM failures and remove the unsuitable `/v1/models` health check; real evaluation continues to use chat completions.
+- [x] Run the live E2E script twice consecutively with successful parse and evaluation results before marking the navigation and NIM fixes complete.
