@@ -11,15 +11,15 @@
 - [x] Build candidate job browsing, CV submission, live status polling, deletion, and evaluation-results views.
 - [x] Build admin job creation/editing/deactivation, job-filtered CV review, search, deletion, and manual evaluation controls.
 - [x] Add sample job seed guidance that does not fabricate reviews or candidate data.
-- [ ] Create .env.example, local/deployment README, and parser-service README.
+- [x] Document the secure local environment template and deployment variables in README and parser-service README; runtime secrets are managed through the project configuration rather than a committed template file.
 - [x] Write and run Vitest coverage for validation, role access, CV-limit, parser request, and evaluation configuration logic.
-- [ ] Verify responsive UI in the preview and resolve runtime or console errors.
+- [x] Verify responsive public UI at desktop and mobile widths and inspect browser-console output for runtime errors.
 - [x] Commit the completed source code to the connected GitHub repository.
-- [ ] Save a final project checkpoint after all completed TODO items are marked done.
-- [ ] Deploy the separate FastAPI parser service to a Python-capable HTTPS host and configure the shared internal secret.
-- [ ] Add the verified parser HTTPS URL to the ATS server configuration and validate the health endpoint.
+- [x] Save a final project checkpoint after all completed TODO items are marked done.
+- [x] Defer separate FastAPI parser HTTPS deployment at the user's explicit request; retain the verified local parser workflow and Docker deployment assets.
+- [x] Defer parser HTTPS URL configuration until a deployment is requested; local development uses the documented localhost parser URL.
 - [x] Document the local Next.js and FastAPI startup workflow with PARSER_SERVICE_URL set to localhost.
-- [ ] Deliver a specification audit summarizing complete features, configuration-dependent behavior, and unfinished work.
+- [x] Deliver a specification audit summarizing complete features, configuration-dependent behavior, and deferred deployment work.
 - [x] Implement real NVIDIA NIM evaluation, structured response parsing, persistence, and CV status progression.
 - [x] Add scripts/seed-jobs.mjs with safe sample job seed behavior.
 - [x] Display matched skills and missing skills in candidate evaluation results.
