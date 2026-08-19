@@ -1,5 +1,13 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1787119790421,
+      "tag": "0000_nervous_dark_phoenix",
+      "breakpoints": true
+    }
+  ]
 }
