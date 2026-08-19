@@ -201,3 +201,11 @@ The checked-out local `HEAD` and `user_github/main` matched when checked. The ma
 | Upload validation UI paths | Unit-tested; no browser interaction this session. | Test only. |
 | RLS behavior with a real non-admin session in each UI route | Authentication guards are test-covered; no manual RLS browser test this session. | Test/code only. |
 | Parser HTTPS cloud deployment | Explicitly deferred; local parser only was tested. | Not deployed. |
+
+## 7. Follow-up NIM and navigation evidence
+
+After the earlier failed run, the same disposable end-to-end script was re-run while both services returned HTTP 200. It reached `evaluated` and produced a score of 80 with model `meta/llama-3.1-8b-instruct`. This proves that the configured `NVIDIA_NIM_API_KEY` was present and accepted by the **chat-completions** endpoint during that later run. The `GET /v1/models` credential test remains independently unreliable in this environment because it returned HTTP 451 in the preceding test run.
+
+The failed CV `3bda5bd9-ce53-48c1-b363-935668562d2a` and the successful follow-up CV `840fb30b-a793-4bd3-ae03-903bf9a31cd2` were queried directly after their disposable-run cleanup. The database returned `[]`; neither record is currently stuck in `evaluating` or `failed`.
+
+After a new preview restart, the landing page again rendered the visible `Sign in` link targeting `/login`. Browser DOM inspection measured it as an anchor at `left: 1167.15625`, `top: 18`, `width: 65.34375`, `height: 34`; `document.elementFromPoint(1200, 35)` returned that same `A` element with text `Sign in`. I then tried the exact link by its browser element index and by the measured screen coordinates. In all attempts, the browser remained at `/`; no navigation event was reported. **The direct navigation test is a failure in the current managed browser/preview session.** The `/login` route has been shown to render when opened directly, but the landing-page Sign in interaction must not be reported as proven working.

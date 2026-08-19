@@ -27,3 +27,5 @@
 - [x] Apply the requested distinct visual identity, purposeful motion, dense admin table, and designed empty states after functional verification.
 - [x] Diagnose and restore the managed preview when it displays an under-modification state or does not respond to controls.
 - [x] Run a fresh evidence-based verification audit covering preview state, full test/build output, live pipeline proof, direct-verification gaps, and GitHub revision alignment.
+- [x] Capture and report the exact NIM failure response, persisted post-failure CV status, configuration reachability, and direct landing Sign in navigation result.
+- [ ] Reproduce an upstream NIM evaluation failure with retained synthetic test data and query the failed CV status before cleanup; the prior failed record was already removed by disposable-test cleanup.

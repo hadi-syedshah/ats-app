@@ -136,9 +136,13 @@ try {
     evaluation
   }, null, 2));
 } catch (error) {
+  const { data: failedCv } = created.cvId
+    ? await admin.from("cvs").select("status").eq("id", created.cvId).maybeSingle()
+    : { data: null };
   console.error(JSON.stringify({
     phase,
     cv_id: created.cvId,
+    status_after_failure: failedCv?.status ?? null,
     error: error instanceof Error ? error.message : String(error),
     cleanup: "will run in finally"
   }, null, 2));
