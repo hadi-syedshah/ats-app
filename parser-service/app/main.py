@@ -18,8 +18,12 @@ def env(name: str) -> str:
     return value
 
 
+def supabase_url() -> str:
+    return env("NEXT_PUBLIC_SUPABASE_URL").rstrip("/").removesuffix("/rest/v1")
+
+
 def supabase_admin() -> Client:
-    return create_client(env("NEXT_PUBLIC_SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"))
+    return create_client(supabase_url(), env("SUPABASE_SERVICE_ROLE_KEY"))
 
 
 @app.get("/health")
