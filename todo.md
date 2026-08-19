@@ -25,3 +25,4 @@
 - [x] Display matched skills and missing skills in candidate evaluation results.
 - [x] Execute a real candidate upload, parsing, and evaluation workflow against Supabase and document the actual outcome.
 - [x] Apply the requested distinct visual identity, purposeful motion, dense admin table, and designed empty states after functional verification.
+- [x] Diagnose and restore the managed preview when it displays an under-modification state or does not respond to controls.
