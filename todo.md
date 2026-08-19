@@ -14,7 +14,7 @@
 - [ ] Create .env.example, local/deployment README, and parser-service README.
 - [x] Write and run Vitest coverage for validation, role access, CV-limit, parser request, and evaluation configuration logic.
 - [ ] Verify responsive UI in the preview and resolve runtime or console errors.
-- [ ] Commit the completed source code to the connected GitHub repository.
+- [x] Commit the completed source code to the connected GitHub repository.
 - [ ] Save a final project checkpoint after all completed TODO items are marked done.
 - [ ] Deploy the separate FastAPI parser service to a Python-capable HTTPS host and configure the shared internal secret.
 - [ ] Add the verified parser HTTPS URL to the ATS server configuration and validate the health endpoint.
