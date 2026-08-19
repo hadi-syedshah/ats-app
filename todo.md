@@ -26,3 +26,4 @@
 - [x] Execute a real candidate upload, parsing, and evaluation workflow against Supabase and document the actual outcome.
 - [x] Apply the requested distinct visual identity, purposeful motion, dense admin table, and designed empty states after functional verification.
 - [x] Diagnose and restore the managed preview when it displays an under-modification state or does not respond to controls.
+- [x] Run a fresh evidence-based verification audit covering preview state, full test/build output, live pipeline proof, direct-verification gaps, and GitHub revision alignment.

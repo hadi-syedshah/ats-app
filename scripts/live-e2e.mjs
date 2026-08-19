@@ -16,6 +16,7 @@ const candidateEmail = `ats.e2e.candidate.${suffix}@example.test`;
 const adminEmail = `ats.e2e.admin.${suffix}@example.test`;
 const password = "End2End!Passphrase2026";
 const created = { candidateId: null, adminId: null, storagePath: null, cvId: null };
+let phase = "setup";
 
 function testResumePdf() {
   const text = [
@@ -86,11 +87,14 @@ async function cleanup() {
 }
 
 try {
+  phase = "create users";
   created.candidateId = await createUser(candidateEmail, "candidate");
   created.adminId = await createUser(adminEmail, "admin");
+  phase = "select job";
   const { data: job, error: jobError } = await admin.from("jobs").select("id,title").eq("is_active", true).order("created_at").limit(1).single();
   if (jobError || !job) throw jobError ?? new Error("No active job exists for the end-to-end test.");
 
+  phase = "upload CV";
   const candidateCookie = await authenticatedCookie(candidateEmail);
   const resumeBytes = testResumePdf();
   const form = new FormData();
@@ -102,16 +106,25 @@ try {
   created.cvId = uploadBody.cvId;
   const { data: uploaded } = await admin.from("cvs").select("file_url").eq("id", created.cvId).single();
   created.storagePath = uploaded?.file_url ?? null;
+  console.log(JSON.stringify({ phase, cv_id: created.cvId, upload_status: "created" }));
 
+  phase = "wait for parsing";
   await waitForCv(created.cvId, "parsed");
+  console.log(JSON.stringify({ phase, cv_id: created.cvId, status: "parsed" }));
+  phase = "verify parsed data";
   const { data: parsed, error: parsedError } = await admin.from("parsed_data").select("name,email,skills,raw_text").eq("cv_id", created.cvId).single();
   if (parsedError || !parsed?.raw_text || !parsed.skills?.length) throw parsedError ?? new Error("Parsed CV data is incomplete.");
+  console.log(JSON.stringify({ phase, cv_id: created.cvId, parsed: { name: parsed.name, email: parsed.email, skill_count: parsed.skills.length } }));
 
+  phase = "request evaluation";
   const adminCookie = await authenticatedCookie(adminEmail);
   const evaluateResponse = await fetch(`${apiBase}/api/cvs/${created.cvId}/evaluate`, { method: "POST", headers: { Cookie: adminCookie } });
   const evaluateBody = await evaluateResponse.json();
   if (!evaluateResponse.ok || typeof evaluateBody.evaluation?.score !== "number") throw new Error(`Evaluation failed (${evaluateResponse.status}): ${JSON.stringify(evaluateBody)}`);
+  phase = "wait for evaluation";
   await waitForCv(created.cvId, "evaluated");
+  console.log(JSON.stringify({ phase, cv_id: created.cvId, status: "evaluated" }));
+  phase = "verify evaluation persistence";
   const { data: evaluation, error: evaluationError } = await admin.from("evaluations").select("score,matched_skills,missing_skills,feedback,model_used").eq("cv_id", created.cvId).single();
   if (evaluationError || !evaluation) throw evaluationError ?? new Error("Evaluation was not persisted.");
 
@@ -122,6 +135,14 @@ try {
     parsed: { name: parsed.name, email: parsed.email, skill_count: parsed.skills.length },
     evaluation
   }, null, 2));
+} catch (error) {
+  console.error(JSON.stringify({
+    phase,
+    cv_id: created.cvId,
+    error: error instanceof Error ? error.message : String(error),
+    cleanup: "will run in finally"
+  }, null, 2));
+  throw error;
 } finally {
   await cleanup();
 }
