@@ -37,4 +37,4 @@
 - [x] Verify signup/login initialization in the browser and re-run the live end-to-end pipeline after the visual-only interface pass.
 - [x] Investigate whether the incomplete ZIP export is controllable from the project workspace and document the finding.
 - [x] Commit and push the verified environment and visual-design changes to GitHub.
-- [ ] Push commit `b6c41d32584ccb0d3c03a5510f490f8e398b665e` to the connected GitHub repository and verify the remote main branch matches local HEAD.
+- [x] Push the verified redesign commits to the connected GitHub repository and verify the remote main branch matches local HEAD (`8c661efb24a5b0f19af76ecf1b7e3708416be5e7`).
