@@ -1,131 +1,128 @@
 # ATS CV Screening Platform
 
-This repository contains two services that run together during local development:
+An applicant tracking system with automated CV parsing and AI-powered evaluation for recruitment workflows.
 
-| Service | Directory | Local address | Responsibility |
-|---|---|---|---|
-| Next.js ATS application | Repository root | `http://localhost:3000` | Authentication, job and CV workflows, storage coordination, dashboards, and evaluation controls. |
-| FastAPI parser | `parser-service/` | `http://127.0.0.1:8000` | Securely downloads a signed CV URL, extracts PDF/DOCX text, structures the CV, and records parsed data in Supabase. |
+## Overview
 
-> **Security boundary:** Keep the Supabase service-role key and `INTERNAL_SERVICE_SECRET` on the server only. Never put either value in a `NEXT_PUBLIC_*` variable, browser source file, or Git commit.
+This repository contains two integrated services:
+- **Next.js web application** (`/`): Authentication, job management, CV upload/storage, dashboards, and evaluation controls
+- **FastAPI parser service** (`parser-service/`): Securely downloads signed CV URLs, extracts text from PDF/DOCX files, structures CV data, and updates Supabase with parsed results
 
-## Prerequisites
+**Job-specific evaluation**: Admins create job postings (title, description, required skills) via the admin dashboard. When uploading a CV, candidates select which job they're applying to. Evaluation scores that CV specifically against the chosen job's requirements — not a generic baseline. Admins can create, edit, or deactivate job postings and filter CVs by job throughout the system.
 
-Install Node.js 20 or newer, pnpm 10 or newer, Python 3.11 or newer, and Git. You also need the configured Supabase project that contains the ATS migrations, including `profiles`, `jobs`, `cvs`, `parsed_data`, and `evaluations`, along with the `cvs` Storage bucket.
+## Tech Stack
 
-## 1. Clone and install the Next.js application
+- **Frontend/Backend**: Next.js 15 (App Router), React 19, TypeScript
+- **Database & Storage**: Supabase (PostgreSQL, Storage bucket for CVs)
+- **Parser Service**: Python 3.11+, FastAPI, pdfplumber, python-docx, spaCy
+- **AI Evaluation**: NVIDIA NIM (optional, enabled via `NVIDIA_NIM_API_KEY`)
+- **Styling**: Tailwind CSS via shadcn/ui
+- **Testing**: Vitest
 
+## Architecture
+
+The Next.js application handles user interactions, authentication, and orchestrates the CV workflow:
+1. Browser requests use Supabase anonymous key + Row Level Security (RLS)
+2. Privileged operations (signed upload URLs, parser coordination) run in server routes with service-role key
+3. The parser service operates as a separate HTTP service called via internal API
+4. Services communicate through Supabase for data persistence and HTTP for direct parser invocation
+
+Security boundaries:
+- Browser code never sees service-role keys or internal secrets
+- Parser service validates internal service secret on all requests
+- Supabase RLS protects candidate/admin data access
+
+## Local Development
+
+### Prerequisites
+- Node.js 20+ and pnpm 10+
+- Python 3.11+
+- Git
+- Configured Supabase project with ATS schema (`profiles`, `jobs`, `cvs`, `parsed_data`, `evaluations` tables + `cvs` storage bucket)
+
+### Setup
+
+1. **Clone repository and install Next.js app**
+   ```bash
+   git clone <repository-url>
+   cd ats-app
+   pnpm install
+   ```
+
+2. **Configure environment**
+   Create `.env.local` in repository root:
+   ```dotenv
+   # Browser-safe Supabase settings
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+   # Server-only — never expose these to browser
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   INTERNAL_SERVICE_SECRET=replace-with-a-long-random-secret
+
+   # Parser service location
+   PARSER_SERVICE_URL=http://127.0.0.1:8000
+
+   # Optional: NVIDIA NIM for AI evaluation
+   # NVIDIA_NIM_API_KEY=
+   ```
+
+3. **Start parser service**
+   ```bash
+   cd parser-service
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+
+4. **Start Next.js application**
+   ```bash
+   # In new terminal, from repository root
+   pnpm dev
+   ```
+
+Visit `http://localhost:3000` to access the application.
+
+## CV Pipeline
+
+1. **Upload & Storage**
+   - Candidate uploads PDF/DOCX (<3 MB) via `/candidate` or `/admin` interface
+   - Server validates file type/signature, stores in Supabase `cvs` bucket
+   - Creates CV record with `uploaded` status
+
+2. **Parsing**
+   - Server advances status to `parsing`, generates signed URL
+   - Calls parser service via `POST http://127.0.0.1:8000/parse` with `X-Internal-Secret`
+   - Parser downloads CV, extracts text/structured data, writes to `parsed_data` table
+   - Updates CV status to `parsed` (or `failed` on error)
+
+3. **Evaluation**
+   - Once a CV reaches `parsed` status and is linked to a Job, evaluation runs automatically (if `NVIDIA_NIM_API_KEY` is configured)
+   - Evaluation scores the CV against the specific job's title, description, and required skills
+   - Admins can manually re-trigger evaluation on an already-evaluated CV via the admin dashboard
+   - Results are stored in the `evaluations` table and CV status updates to `evaluated`
+
+Dashboards poll CV status endpoints for real-time UI updates without full-page reloads.
+
+### Troubleshooting Common Issues
+
+- **Upload saved but parsing doesn't start**: Verify `PARSER_SERVICE_URL` points to running parser and both services share identical `INTERNAL_SERVICE_SECRET`
+- **Parser returns 401**: Regenerate secret and ensure identical value in Next.js `.env.local` and parser service environment
+- **Parser returns 422**: Check FastAPI terminal for extraction errors (encrypted/image-only PDFs may require OCR not included)
+
+### Quality Checks
+
+From repository root:
 ```bash
-git clone https://github.com/hadi-syedshah/ats-app.git
-cd ats-app
-pnpm install
+pnpm test     # Unit/vitest tests
+pnpm build    # Production build verification
 ```
 
-Create a root `.env.local` file. Substitute the credentials from the **same Supabase project** where the ATS SQL migrations were applied.
+## Deployment
 
-```dotenv
-# Browser-safe Supabase settings
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# Server-only settings — do not expose these to the browser
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-INTERNAL_SERVICE_SECRET=replace-with-a-long-random-secret
-
-# The local FastAPI parser service
-PARSER_SERVICE_URL=http://127.0.0.1:8000
-
-# Leave absent or blank to keep LLM evaluation disabled.
-# NVIDIA_NIM_API_KEY=
-```
-
-The application intentionally leaves NVIDIA NIM evaluation dormant while `NVIDIA_NIM_API_KEY` is absent. Uploading and parsing can still be tested; evaluation actions report that configuration is required instead of sending a request to NVIDIA.
-
-## 2. Install and configure the Python parser
-
-Open a second terminal from the same repository.
-
-```bash
-cd ats-app/parser-service
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Export the parser's server-only configuration in that terminal. The values for `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `INTERNAL_SERVICE_SECRET` must match the root `.env.local` file. The parser code currently reads the project URL through the `NEXT_PUBLIC_SUPABASE_URL` name for compatibility with the application configuration; it is used server-side by FastAPI.
-
-```bash
-export NEXT_PUBLIC_SUPABASE_URL="https://your-project-ref.supabase.co"
-export SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
-export INTERNAL_SERVICE_SECRET="replace-with-the-same-long-random-secret"
-```
-
-Start the parser:
-
-```bash
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Confirm it is running before starting an upload:
-
-```bash
-curl http://127.0.0.1:8000/health
-# Expected: {"status":"ok"}
-```
-
-## 3. Start the Next.js ATS application
-
-Open a third terminal in the repository root and run:
-
-```bash
-cd ats-app
-pnpm dev
-```
-
-Open `http://localhost:3000`. Sign up or sign in with Supabase email/password authentication. The database profile role determines access: candidates are routed to `/candidate` and administrators to `/admin`.
-
-## 4. Test the end-to-end CV pipeline
-
-Create or activate a job posting, then use a candidate account to upload a PDF or DOCX smaller than 3 MB. The server validates the extension and MIME type, stores the object in the `cvs` bucket, creates a CV record, creates a short-lived signed URL, and calls:
-
-```text
-POST http://127.0.0.1:8000/parse
-X-Internal-Secret: <INTERNAL_SERVICE_SECRET>
-```
-
-The parser writes `parsed_data` and updates the CV status from `uploaded` through `parsing` to `parsed`. Candidate and admin dashboards poll the status endpoint so the UI can update without a full-page reload.
-
-| Expected status | Meaning | Suggested check if it stops there |
-|---|---|---|
-| `uploaded` | Storage and CV database record completed. | Confirm `PARSER_SERVICE_URL` is set and the parser process is running. |
-| `parsing` | The application sent a parse request. | Inspect the FastAPI terminal for request or dependency errors. |
-| `parsed` | Text and structured fields were written successfully. | Check `parsed_data` in Supabase. |
-| `evaluating` | An admin requested evaluation with NIM configured. | Confirm a valid `NVIDIA_NIM_API_KEY` exists only on the app server. |
-| `evaluated` | Evaluation record is available. | View the candidate or admin results panel. |
-| `failed` | The parser or evaluation step returned an error. | Check the app and FastAPI terminal logs; never expose secrets in logs. |
-
-## Common local-development issues
-
-| Symptom | Resolution |
-|---|---|
-| Browser shows a Supabase configuration notice | Verify both public Supabase variables in `.env.local`, then restart `pnpm dev`. |
-| Upload is saved but parsing does not begin | Confirm `PARSER_SERVICE_URL=http://127.0.0.1:8000`, the FastAPI process is running, and both services use exactly the same `INTERNAL_SERVICE_SECRET`. |
-| Parser returns `401 Invalid internal service secret` | Regenerate or copy the secret carefully to both service environments and restart both processes. |
-| Parser returns `422 CV parsing failed` | Confirm the document is a readable PDF or DOCX and inspect the FastAPI terminal. Encrypted or image-only CVs may require OCR, which is not included in this parser. |
-| Evaluation is unavailable | This is expected until you explicitly add a valid `NVIDIA_NIM_API_KEY` to the Next.js server environment. |
-
-## Quality checks
-
-From the repository root, run:
-
-```bash
-pnpm test
-pnpm build
-```
-
-The credential test makes a read-only request to the configured `jobs` table. It needs a valid project URL and service-role key, but it does not insert, update, or delete application data.
-
-## Deployment note
-
-For production, deploy `parser-service/` as a separate Dockerized Python web service and set `PARSER_SERVICE_URL` in the Next.js application to its **HTTPS base URL**. Use the same server-only `INTERNAL_SERVICE_SECRET` in both deployments. Do not use `localhost` in a cloud deployment; it refers to the individual container rather than the other service.
+For production:
+- Deploy `parser-service/` as a separate Dockerized Python web service
+- Set `PARSER_SERVICE_URL` in Next.js to the parser's HTTPS base URL
+- Use same `INTERNAL_SERVICE_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` in both deployments
+- Never use `localhost` in cloud deployments — it refers to individual container, not inter-service communication
