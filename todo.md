@@ -42,4 +42,4 @@
 - [x] Preserve manual admin re-evaluation for evaluated CVs and consistently overwrite the displayed evaluation result.
 - [x] Tighten the NIM scoring prompt to compare extracted CV evidence strictly against the linked job requirements and produce concise score justification.
 - [x] Capture and present the exact NIM prompt before and after the scoring revision.
-- [ ] Push the verified automatic and manual evaluation changes to GitHub.
+- [x] Push the verified automatic and manual evaluation changes to GitHub and verify GitHub main matches local HEAD (`8ae88725da005225f57980f9c1e37f84535c2b07`).
