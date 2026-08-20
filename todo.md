@@ -38,3 +38,8 @@
 - [x] Investigate whether the incomplete ZIP export is controllable from the project workspace and document the finding.
 - [x] Commit and push the verified environment and visual-design changes to GitHub.
 - [x] Push the verified redesign commits to the connected GitHub repository and verify the remote main branch matches local HEAD (`8c661efb24a5b0f19af76ecf1b7e3708416be5e7`).
+- [x] Automatically trigger evaluation for parsed CVs with a linked job, without changing upload, parsing, or CV-limit behavior.
+- [x] Preserve manual admin re-evaluation for evaluated CVs and consistently overwrite the displayed evaluation result.
+- [x] Tighten the NIM scoring prompt to compare extracted CV evidence strictly against the linked job requirements and produce concise score justification.
+- [x] Capture and present the exact NIM prompt before and after the scoring revision.
+- [ ] Push the verified automatic and manual evaluation changes to GitHub.

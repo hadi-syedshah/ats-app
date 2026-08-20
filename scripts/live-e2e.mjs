@@ -108,32 +108,36 @@ try {
   created.storagePath = uploaded?.file_url ?? null;
   console.log(JSON.stringify({ phase, cv_id: created.cvId, upload_status: "created" }));
 
-  phase = "wait for parsing";
-  await waitForCv(created.cvId, "parsed");
-  console.log(JSON.stringify({ phase, cv_id: created.cvId, status: "parsed" }));
+  phase = "wait for automatic parsing and evaluation";
+  await waitForCv(created.cvId, "evaluated");
+  console.log(JSON.stringify({ phase, cv_id: created.cvId, status: "evaluated", trigger: "automatic" }));
   phase = "verify parsed data";
   const { data: parsed, error: parsedError } = await admin.from("parsed_data").select("name,email,skills,raw_text").eq("cv_id", created.cvId).single();
   if (parsedError || !parsed?.raw_text || !parsed.skills?.length) throw parsedError ?? new Error("Parsed CV data is incomplete.");
   console.log(JSON.stringify({ phase, cv_id: created.cvId, parsed: { name: parsed.name, email: parsed.email, skill_count: parsed.skills.length } }));
 
-  phase = "request evaluation";
+  phase = "verify automatic evaluation persistence";
+  const { data: automaticEvaluation, error: automaticEvaluationError } = await admin.from("evaluations").select("id,score,matched_skills,missing_skills,feedback,model_used").eq("cv_id", created.cvId).single();
+  if (automaticEvaluationError || !automaticEvaluation) throw automaticEvaluationError ?? new Error("Automatic evaluation was not persisted.");
+  phase = "manual re-evaluation";
   const adminCookie = await authenticatedCookie(adminEmail);
   const evaluateResponse = await fetch(`${apiBase}/api/cvs/${created.cvId}/evaluate`, { method: "POST", headers: { Cookie: adminCookie } });
   const evaluateBody = await evaluateResponse.json();
   if (!evaluateResponse.ok || typeof evaluateBody.evaluation?.score !== "number") throw new Error(`Evaluation failed (${evaluateResponse.status}): ${JSON.stringify(evaluateBody)}`);
-  phase = "wait for evaluation";
+  phase = "verify manual re-evaluation";
   await waitForCv(created.cvId, "evaluated");
-  console.log(JSON.stringify({ phase, cv_id: created.cvId, status: "evaluated" }));
-  phase = "verify evaluation persistence";
-  const { data: evaluation, error: evaluationError } = await admin.from("evaluations").select("score,matched_skills,missing_skills,feedback,model_used").eq("cv_id", created.cvId).single();
+  const { data: evaluation, error: evaluationError, count: evaluationCount } = await admin.from("evaluations").select("score,matched_skills,missing_skills,feedback,model_used", { count: "exact" }).eq("cv_id", created.cvId).single();
   if (evaluationError || !evaluation) throw evaluationError ?? new Error("Evaluation was not persisted.");
+  if (evaluationCount !== 1) throw new Error(`Expected one overwritten evaluation record, found ${evaluationCount ?? 0}.`);
 
   console.log(JSON.stringify({
     candidate: candidateEmail,
     cv_id: created.cvId,
     job: job.title,
     parsed: { name: parsed.name, email: parsed.email, skill_count: parsed.skills.length },
-    evaluation
+    automatic_evaluation: automaticEvaluation,
+    manual_re_evaluation: evaluation,
+    evaluation_record_count: evaluationCount
   }, null, 2));
 } catch (error) {
   const { data: failedCv } = created.cvId

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { evaluateWithNim, extractEvaluation } from "./evaluation";
+import { buildNimEvaluationPrompt, compareJobRequirements, constrainScoreToRequirementCoverage, evaluateWithNim, extractEvaluation } from "./evaluation";
 
 const input = {
   job: { title: "Engineer", description: "Build services", requiredSkills: ["TypeScript"] },
@@ -22,6 +22,20 @@ describe("extractEvaluation", () => {
 
   it("rejects a response that does not contain a JSON object", () => {
     expect(() => extractEvaluation("I cannot evaluate this CV.")).toThrow("did not return a JSON evaluation");
+  });
+
+  it("derives matched and missing skills from the explicit required-skills list and caps an inflated mismatch score", () => {
+    const comparison = compareJobRequirements(["Python", "FastAPI", "SQL", "Kubernetes", "Terraform"], ["Python", "FastAPI", "SQL"]);
+    expect(comparison).toMatchObject({ matchedSkills: ["Python", "FastAPI", "SQL"], missingSkills: ["Kubernetes", "Terraform"], coverage: 0.6 });
+    expect(constrainScoreToRequirementCoverage(96, comparison)).toBe(72);
+    expect(extractEvaluation(JSON.stringify({ score: 96, matched_skills: ["invented"], missing_skills: [], feedback: "Some overlap." }), comparison)).toMatchObject({ score: 72, matched_skills: ["Python", "FastAPI", "SQL"], missing_skills: ["Kubernetes", "Terraform"] });
+  });
+
+  it("builds a strict prompt with deterministic job-requirement evidence", () => {
+    const prompt = buildNimEvaluationPrompt({ job: { title: "Platform Engineer", description: "Operate Kubernetes", requiredSkills: ["Kubernetes", "Terraform"] }, candidate: { skills: ["Kubernetes"] } });
+    expect(prompt.messages[0].content).toContain("penalize missing core requirements materially");
+    expect(prompt.messages[1].content).toContain("missing_required_skills");
+    expect(prompt.requirementComparison).toMatchObject({ matchedSkills: ["Kubernetes"], missingSkills: ["Terraform"] });
   });
 
   it("retries transient NIM 451 responses before accepting a later chat completion", async () => {
